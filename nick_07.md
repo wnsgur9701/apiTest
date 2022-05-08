@@ -38,20 +38,114 @@ public class Main {
 (책의 stack 예제)   
 ```java
 public class Stack {
-    private Object[] elements;
+    private Object[] elements; // (0) 직접 관리하려는 저장소 pool
     private int size = 0;
     private static final int DEFAULT_INITIAL_CAPACITY = 16;
-    
-    ...
-    
+
+    public Stack() {
+        elements = new Object[DEFAULT_INITIAL_CAPACITY];
+    }
+
+    public void push(Object e) {...}
+
     public Object pop() {
-        if(size == 0){
-            throw new EmpthStackException();
-        }
-        
-        return elements[--size]; // 메모리 누수: elements[size] = null을 해 주어야
+        if (size == 0)
+            throw new EmptyStackException();
+        return elements[--size]; // (1) 메모리 누수 발생
     }
 }
 ```
+![image](https://user-images.githubusercontent.com/62540133/167296293-bcb29a31-db43-4e92-a277-536b9f3580ca.png)
+```java
+public Object pop() {
+    if (size == 0)
+        throw new EmptyStackException();
+    Object result = elements[--size];
+    elements[size] = null; // 다 쓴 참조 해제
+    return result;
+}
+```
+-> 자기 메모리를 직접 관리하는 클래스라면 프로그래머는 항상 메모리 누수에 주의해야 한다.    
+
+(캐시)   
+Key-Value 값을 저장하기 위해 HashMap 이 자주 사용된다. 하지만 HashMap은 GC에 의해 수집되지 않아서 많은 메모리를 소유하게 될 수 있다.   
+즉, HashMap에 Key가 null 이어도 이 객체가 GC에 의해서 사라지지 않고 계속 가지고 있다는 뜻이다.   
+```java
+@DisplayName("HashMap 테스트")
+  @Test
+  void HashMapTest() throws InterruptedException {
+      //given
+      Map<Foo, String> map = new HashMap<>();
+
+      Foo key = new Foo();
+      map.put(key, "1");
+
+      //when
+      key = null;
+      System.gc();
+
+      TimeUnit.SECONDS.sleep(5);
+
+      assertFalse("HashMap 은 참조를 끊어도 Map이 비어있지 않다.", map.isEmpty());
+  }
+
+  @DisplayName("WeakHashMap 테스트")
+  @Test
+  void test2() throws InterruptedException {
+      //given
+      Map<Foo, String> map = new WeakHashMap<>();
+
+      Foo key = new Foo();
+      map.put(key, "1");
+
+      //when
+      key = null;
+      System.gc();
+
+      TimeUnit.SECONDS.sleep(5);
+
+      assertTrue("WeakHashMap은 참조를 끊으면 GC에 의해 MAP이 비어진다", map.isEmpty());
+  }
+```
+Java의 참조 유형에는 크게 4가지가 있습니다.   
+참조 유형에 따라 GC 실행 대상여부, 시점이 달라집니다.   
+
+1. Strong References (강한 참조)
+
+2. Soft References (소프트 참조)
+
+3. Weak References (약한 참조)
+
+4. Phantom References (팬텀 참조)   
+
+(강한 참조)      
+<img width="419" alt="image" src="https://user-images.githubusercontent.com/62540133/167298543-404fcfec-73e5-47a4-97a4-fa43797c5ce1.png">   
+-> g 변수가 참조를 가지고 있는 한, Gfg객체는 GC의 대상이 되지 않습니다   
+
+(소프트 참조)
+<img width="625" alt="image" src="https://user-images.githubusercontent.com/62540133/167298922-1f256d2e-65ba-468d-9cc1-9be62984a890.png">   
+-> 대상 객체를 참조하는 경우가 softReference 객체만 존재하는 경우 gc의 대상이 된다.    
+단, jvm의 메모리가 부족한 경우에만 힙영역에서 제거되고 메모리가 부족하지 않다면 굳이 제거하지 않습니다.    
+
+
+(약한 참조)   
+<img width="653" alt="image" src="https://user-images.githubusercontent.com/62540133/167298524-9d3fd8fd-b7e3-42f0-9d1e-daffec097df6.png">   
+-> 대상 객체를 참조하는 경우가 WeakReferences 객체만 존재하는 경우 GC의 대상이 됩니다.
+다음 GC 실행시 무조건 힙 메모리에서 제거됩니다.   
+
+(팬텀 참조)
+어렵고 잘 쓰이지 않는다고 하여 개인적으로 맡깁니다!   
+
+<백그라운드 쓰레드>   
+개념적으로만 쓰레드를 실행할 때 가장 오래된 캐시를 찾아서 3초마다 계속 반복하는 백그라운드 쓰레드를 실행.   
+(이러한 코드를 작성하면 된다.)   
+
+(리스너 콜백)   
+클라이언트가 콜백을 등록만 하고 명확히 해지하지 않는다면, 뭔가 조치해주지 않는 한 콜백은 계속 쌓여간다.
+
+이럴 때 콜백을 weak reference로 저장하면 GC가 즉시 수거해간다.
+
+
+
   
   
