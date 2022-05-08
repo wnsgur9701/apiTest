@@ -79,4 +79,68 @@ public class RomanNumerals {
 -> 빈번이 호출 되는 상황에서 6.5배 정도 빨라졌다.
 
 예시4) 어댑터(view).  
-어댑터 : 실제 작업은 뒷단 객체에 위임하고, 자신은 제 2의 인터페이스 역할을 해주는 객체.
+어댑터 : 실제 작업은 뒷단 객체에 위임하고, 자신은 제 2의 인터페이스 역할을 해주는 객체.   
+- map에 적용   
+어댑터의 역할 keySet // 뒷단 객체는 Map.   
+Map의 view역할을 keySet이 하여 Set으로 보여준다.
+```java
+   @Test
+    void name() {
+        Map<Integer, String> map = new HashMap<>();
+        map.put(1, "첫번째");
+        map.put(2, "두번째");
+        map.put(3, "세번째");
+
+        // keySet 은 view 의 역할을 한다.
+        Set<Integer> keySet = map.keySet();
+        assertThat(keySet).contains(1, 2, 3);
+
+        // 따라서 뒷단 객체인 map 이 기능을 담당하고 있다.
+        map.remove(3);
+        assertThat(keySet).doesNotContain(3);
+
+```
+-> keySet을 호출할 때마다 새로운 Set인스턴스가 만들어지다고 생각을 할 수도 있지만 사실은 매번 같은 Set인스턴스를 반환한다.   
+
+<Map interface keyset>
+<img width="654" alt="image" src="https://user-images.githubusercontent.com/62540133/167286959-3bec9cbd-408c-4523-ad25-59b38d097102.png">.  
+   
+<구현체 hashmap>
+```java
+public Set<K> keySet() {
+        Set<K> ks = keySet;
+        if (ks == null) {
+            ks = new KeySet();
+            keySet = ks;
+        }
+        return ks;
+    }
+
+    final class KeySet extends AbstractSet<K> {
+        public final int size()                 { return size; }
+        public final void clear()               { HashMap.this.clear(); }
+        public final Iterator<K> iterator()     { return new KeyIterator(); }
+        public final boolean contains(Object o) { return containsKey(o); }
+        public final boolean remove(Object key) {
+            return removeNode(hash(key), key, null, false, true) != null;
+        }
+        public final Spliterator<K> spliterator() {
+            return new KeySpliterator<>(HashMap.this, 0, -1, 0, 0);
+        }
+        public final void forEach(Consumer<? super K> action) {
+            Node<K,V>[] tab;
+            if (action == null)
+                throw new NullPointerException();
+            if (size > 0 && (tab = table) != null) {
+                int mc = modCount;
+                for (int i = 0; i < tab.length; ++i) {
+                    for (Node<K,V> e = tab[i]; e != null; e = e.next)
+                        action.accept(e.key);
+                }
+                if (modCount != mc)
+                    throw new ConcurrentModificationException();
+            }
+        }
+    }
+```
+-> adapter 어떠한 map이 오더라도 뒷단 객체가 keyset을 잘 
