@@ -1,0 +1,82 @@
+# 아이템 6 <불필요한 객체 생성을 피하라>   
+똑같은 기능의 객체를 매번 생성하기 보다는 객체 하나를 재사용하는 편이 나을 때가 많다.   
+-> 기존 객체를 재사용해야 한다면 새로운 객체를 만들지 말자.    
+왜?? 하나를 더 생성하는 것은 불필요한 메모리 낭비 + 성능상의 이슈.     
+예시1) String    
+```java
+// bad example - 호출될 때마다 새로운 인스턴스 생성
+String s = new String("bad example"); // Heap 영역에 존재
+
+// good example - 하나의 인스턴스를 사용
+String s = "good example"; // String constant pool 영역에 존재
+```
+
+<img width="685" alt="image" src="https://user-images.githubusercontent.com/62540133/167284908-e93140b2-a721-4534-b675-0d3f17f944c4.png">   
+literal로 string 객체를 생성하면 string pool에 그 값이 있는지 확인해 그 값이 있다면 같은 값을 참조하도록 한다.   
+만약 값이 없다면 string pool에 추가한다.   
+하지만 new 연산자로 생성한 string 객체는 같은 값이 string pool에 있더라도, heap 영역 내 별도의 객체를 가리키게 된다.   
+   
+예시2) 정적 팩터리 매서드를 제공하는 불변 클래스 사용 - boolean.  
+boolean class.  
+<img width="547" alt="image" src="https://user-images.githubusercontent.com/62540133/167285120-1917af47-5f98-45ed-9e9b-9e6e271ebc2d.png">   
+만약 true나 false를 return할 경우가 있으면 새롭게 객체를 생성하는 것이 아니라 이미 클래스내에서 만들어진 boolean 객체를 사용   
+   
+<boolean 좋지 않은 예> - Boolean(String) 생성자
+```java
+public Boolean(String s) {
+        this(parseBoolean(s));
+    }
+    
+public static boolean parseBoolean(String s) {
+        return ((s != null) && s.equalsIgnoreCase("true"));
+    }
+```   
+호출할 때 마다 새로운 생성자를 생성   
+
+<boolean 좋은 예> - Boolean.valueOf(String) 팩토리 메서드   
+```java
+public static Boolean valueOf(String s) {
+        return parseBoolean(s) ? TRUE : FALSE;
+    }
+```
+호출시에도 새로운 객체가 아닌 위에서 만들어진 true, false 객체를 사용   
+* 예시에서는 불변 객체를 다루고 있지만 만약 가변 객체라 해도 사용 중에 변경 되지 않을 것임을 안다면 재사용 할 수 있다.
+
+예시3) 생성 비용이 아주 비싼 객체 - 정규표현식   
+-> '비싼 객체'가 반복해서 필요하다면 캐싱해서 재사용하자! 
+
+[캐싱이란?]   
+* 캐시   
+: 컴퓨터 과학에서 데이터나 값을 미리 복사해 놓는 임시 장소. 캐시는 캐시의 접근 시간에 비해 원래 데이터를 접근하는 시간이 오래 걸리는 경우나 값을 다시 계산하는 시간을 절약하고 싶은 경우에 사용한다.    
+
+캐싱 -> 캐시라는 작업을 하는 행위(행동)
+
+<정규표현식 좋지 않은 예>   
+```java
+// 정규 표현식을 활용해 유효한 로마 숫자인지 확인하는 메서드
+static boolean isRomanNumeral(String s) {
+    return s.matches("^(?=.)M*(C[MD]|D?C{0,3})" + "(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$");
+}
+```
+-> 정규 표현식용 pattern 인스턴스는, 한 번 쓰고 버려져서 곧바로 가비지 컬렉션의 대상이 된다.    
+-> 그런데 pattern은 입력받은 정규표현식에 해당하는 유한 상태 머신을 만들기 때문에 인스턴스 생성 비용이 높다. 
+* 유한 상태 머신
+: 상태의 수가 유한한 기계
+<img width="358" alt="image" src="https://user-images.githubusercontent.com/62540133/167286355-4ecd126a-3357-4272-bd6a-75552fada03e.png">   
+상단 경로 혹은 하단 경로를 탈 수 있다. 상단 경로는 a+ // 하단 경로는 'b' 다음에 'c'혹은 'd'   
+
+<정규표현식 캐싱하여 개선>   
+```java
+public class RomanNumerals {
+
+    private static final Pattern ROMAN = Pattern.compile("^(?=.)M*(C[MD]|D?C{0,3})" + "(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$");
+
+    static boolean isRomanNumeralFast(String s) {
+        return ROMAN.matcher(s).matches();
+    }
+}
+```
+-> 빈번이 호출 되는 상황에서 6.5배 정도 빨라졌다.
+
+예시4) 어댑터(view).  
+어댑터 : 실제 작업은 뒷단 객체에 위임하고, 자신은 제 2의 인터페이스 역할을 해주는 객체.
